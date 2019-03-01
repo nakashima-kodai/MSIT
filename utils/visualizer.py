@@ -5,18 +5,16 @@ import torch
 import torchvision
 
 
-def show_loaded_image(label_tensor, truth_tensor):
+def show_image(label_tensor, truth_tensor, nrow):
     batch_size = truth_tensor.shape[0]
 
-    labeltruth = torch.cat((label_tensor[0].unsqueeze(0), truth_tensor[0].unsqueeze(0)), dim=0)
-    for i in range(1, batch_size):
-        temp = torch.cat((label_tensor[i].unsqueeze(0), truth_tensor[i].unsqueeze(0)), dim=0)
-        labeltruth = torch.cat((labeltruth, temp), dim=0)
-
-    labeltruth = torchvision.utils.make_grid(labeltruth, nrow=6, padding=1)
+    labeltruth = torch.cat((label_tensor, truth_tensor), dim=0)
+    labeltruth = torchvision.utils.make_grid(labeltruth, nrow=nrow, padding=1)
     labeltruth = labeltruth.numpy().transpose((1, 2, 0))
 
     plt.imshow(labeltruth)
+    plt.pause(0.5)
+    plt.clf()
 
 def save_images(opt, epoch, label, truth, fake_image):
     batch_size = label.shape[0]
