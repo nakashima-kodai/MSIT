@@ -16,6 +16,7 @@ class BaseOptions():
         self.parser.add_argument('--gpu_ids', type=str, default='0')
         self.parser.add_argument('--ckpt_dir', type=str, default='./ckpt')
         self.parser.add_argument('--sample_dir', type=str, default='./samples')
+        self.parser.add_argument('--result_dir', type=str, default='./results')
 
         ''' input/output sizes '''
         self.parser.add_argument('--batch_size', type=int, default=16)
@@ -36,18 +37,14 @@ class BaseOptions():
         self.parser.add_argument('--no_flip', action='store_true')
 
         ''' for generator '''
-        self.parser.add_argument('--netG', type=str, default='resnet', help='[resnet, resnet_cbn, unet_cbn, unet_fz, unet_cbn_fz]')
         self.parser.add_argument('--ngf', type=int, default=64)
-        self.parser.add_argument('--n_down_global', type=int, default=4)
-        self.parser.add_argument('--n_blocks_global', type=int, default=9)
-        self.parser.add_argument('--n_blocks_local', type=int, default=3, help='number of residual blocks in the local enhancer network')
-        self.parser.add_argument('--n_local_enhancers', type=int, default=1, help='number of local enhancers to use')
-        self.parser.add_argument('--nepoch_fix_global', type=int, default=0, help='numer of epochs that we only train the outmost local enhancer')
+        self.parser.add_argument('--n_down', type=int, default=4)
+        self.parser.add_argument('--n_blocks', type=int, default=6)
 
         ''' for generator/discriminator '''
         self.parser.add_argument('--norm', type=str, default='instance', help='[instance, batch]')
         self.parser.add_argument('--padding_type', type=str, default='reflect', help='[reflect, instance, zero]')
-        self.parser.add_argument('--weight_init_type', type=str, default='xavier', help='[normal, xavier]')
+        self.parser.add_argument('--init_type', type=str, default='normal', help='[normal, xavier, kaiming]')
 
         self.initialized = True
 

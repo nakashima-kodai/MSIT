@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 from torch.nn import init
 from torch.optim import lr_scheduler
-from . import normalizations
 
 
 def init_weights(net, init_type='normal', gain=0.02):
@@ -53,10 +52,6 @@ def get_norm_layer(norm_nc, norm_type='instance'):
     elif norm_type == 'instance':
         # norm_layer = nn.InstanceNorm2d(norm_dim, track_running_stats=True)
         norm_layer = nn.InstanceNorm2d(norm_nc)
-    elif norm_type == 'adain':
-        norm_layer = normalizations.AdaptiveInstanceNorm2d(norm_nc)
-    elif norm_type == 'ln':
-        norm_layer = normalizations.LayerNorm(norm_nc)
     elif norm_type == 'none' or norm_type == 'sn':
         norm_layer = None
     else:

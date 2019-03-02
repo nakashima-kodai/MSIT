@@ -49,11 +49,8 @@ class BaseModel():
             net = getattr(self, name)
 
             print('saving the model to {}'.format(save_path))
-            if len(self.opt.gpu_ids):
-                torch.save(net.cpu().state_dict(), save_path)
-                net.cuda()
-            else:
-                torch.save(net.cpu().state_dict(), save_path)
+            torch.save(net.cpu().state_dict(), save_path)
+            net.cuda()
 
     # load models from the disk
     def load_networks(self, epoch, save_dir=None):
@@ -68,7 +65,7 @@ class BaseModel():
             state_dict = torch.load(load_path)
             net.load_state_dict(state_dict)
 
-    def print_networks(self, verbose):
+    def print_networks(self):
         print('---------- Networks initialized -------------')
         for name in self.model_names:
             if isinstance(name, str):
