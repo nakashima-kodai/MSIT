@@ -26,6 +26,7 @@ class TrainOptions(BaseOptions):
 
         ''' for losses '''
         self.parser.add_argument('--lambda_vgg', type=float, default=10.0)
+        self.parser.add_argument('--lambda_rec', type=float, default=10.0)
         self.parser.add_argument('--no_ganFeat_loss', action='store_true')
 
         self.isTrain = True
