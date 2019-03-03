@@ -10,11 +10,12 @@ class MSIT(BaseModel):
 
         n_class = opt.n_weather_class
 
-        # self.loss_names = ['gen', 'dis', 'adv', 'vgg']
+        # self.loss_names = ['gen', 'dis', 'adv', 'rec']
         self.loss_names = ['gen', 'dis', 'adv', 'vgg', 'rec']
         self.model_names = ['gen']
         # self.gen = networks.ResNetGenerator_CBN(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
-        self.gen = networks.ResNetGenerator_CBN2(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
+        # self.gen = networks.ResNetGenerator_CBN2(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
+        self.gen = networks.ResNetGenerator_CBN3(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
 
         if self.isTrain:
             ### define Discriminator ###
@@ -23,12 +24,12 @@ class MSIT(BaseModel):
             self.dis = networks.ProjectionDiscriminator(n_class, dis_input_nc, opt.ndf, opt.num_D, opt.n_layer, 'sn', 'lrelu')
 
             ### set optimizers ###
-            self.optimizer_G = torch.optim.Adam(self.gen.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
-            self.optimizer_D = torch.optim.Adam(self.dis.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
-            # self.optimizer_G = torch.optim.Adam([p for p in self.gen.parameters() if p.requires_grad],
-            #                                     lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
-            # self.optimizer_D = torch.optim.Adam([p for p in self.dis.parameters() if p.requires_grad],
-            #                                     lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
+            # self.optimizer_G = torch.optim.Adam(self.gen.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
+            # self.optimizer_D = torch.optim.Adam(self.dis.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
+            self.optimizer_G = torch.optim.Adam([p for p in self.gen.parameters() if p.requires_grad],
+                                                lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
+            self.optimizer_D = torch.optim.Adam([p for p in self.dis.parameters() if p.requires_grad],
+                                                lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
 
@@ -74,7 +75,7 @@ class MSIT(BaseModel):
         self.loss_vgg = self.criterionVGG(self.fake_image, self.image) * self.opt.lambda_vgg
         self.loss_rec = self.recon_criterion(self.fake_image, self.image) * self.opt.lambda_rec
 
-        # self.loss_gen = self.loss_adv + self.loss_vgg
+        # self.loss_gen = self.loss_adv + self.loss_rec
         self.loss_gen = self.loss_adv + self.loss_vgg + self.loss_rec
         self.loss_gen.backward()
         self.optimizer_G.step()

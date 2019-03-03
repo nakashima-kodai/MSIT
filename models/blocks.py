@@ -167,3 +167,28 @@ class LinearBlock(nn.Module):
         if self.activation:
             x = self.activation(x)
         return x
+
+class Self_Attention(nn.Module):
+    def __init__(self, input_nc):
+        super(Self_Attention, self).__init__()
+
+        self.query_conv = nn.Conv2d(input_nc, input_nc//8, kernel_size=1)
+        self.key_conv = nn.Conv2d(input_nc, input_nc//8, kernel_size=1)
+        self.value_conv = nn.Conv2d(input_nc, input_nc, kernel_size=1)
+
+        self.gamma = nn.Parameter(torch.zeros(1))
+
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, x):
+        batch_size, nc, w, h = x.size()
+        proj_query = self.query_conv(x).view(batch_size, -1, w*h).permute(0, 2, 1)
+        proj_key = self.key_conv(x).view(batch_size, -1, w*h)
+        energy = torch.bmm(proj_query, proj_key)
+        attention = self.softmax(energy)
+        proj_value = self.value_conv(x).view(batch_size, -1, w*h)
+
+        out = torch.bmm(proj_value, attention.permute(0, 2, 1))
+        out = out.view(batch_size, nc, w, h)
+        out = self.gamma*out + x
+        return out

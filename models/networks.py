@@ -113,6 +113,62 @@ class ResNetGenerator_CBN2(nn.Module):
         x = self.output_conv(x)
         return x
 
+class ResNetGenerator_CBN3(nn.Module):
+    def __init__(self, n_class, input_nc, output_nc, ngf, n_down, n_blocks, activation):
+        super(ResNetGenerator_CBN3, self).__init__()
+
+        self.n_down = n_down
+        self.n_blocks = n_blocks
+
+        self.input_conv = Conv2dBlock(input_nc, ngf, 7, 1, 3, 'none', activation, 'reflect')
+
+        ### down sampling ###
+        for i in range(n_down):
+            mult = 2**i
+            # i_c = min(mult*ngf, 512)
+            # o_c = min(2*mult*ngf, 512)
+            i_c = mult*ngf
+            o_c = 2*mult*ngf
+            setattr(self, 'down'+str(i), Conv2dBlock(i_c, o_c, 3, 2, 1, 'instance', activation, 'reflect'))
+
+        ### resnet block ###
+        # mult = min(2**n_down, 8)
+        mult = 2**n_down
+        for i in range(n_blocks):
+            setattr(self, 'block'+str(i), ResBlock_CBN(n_class, mult*ngf, activation, 'reflect'))
+
+        ### up sampling ###
+        for i in range(n_down):
+            mult = 2**(n_down-i)
+            # i_c = min(mult*ngf, 512)
+            # o_c = min(mult*ngf//2, 512)
+            i_c = mult*ngf
+            o_c = mult*ngf//2
+            # setattr(self, 'up'+str(i), trConv2dBlock_CBN(n_class, i_c, o_c, 2, 2, 0, activation))
+            setattr(self, 'up'+str(i), upConv2dBlock(i_c, o_c, 3, 1, 1, 'instance', activation, 'reflect'))
+            setattr(self, 'sa'+str(i), Self_Attention(o_c))
+
+        self.output_conv = Conv2dBlock(ngf, output_nc, 7, 1, 3, 'none', 'tanh', 'reflect')
+
+    def forward(self, x, c):
+        x = self.input_conv(x)
+
+        for i in range(self.n_down):
+            conv = getattr(self, 'down'+str(i))
+            x = conv(x)
+
+        for i in range(self.n_blocks):
+            conv = getattr(self, 'block'+str(i))
+            x = conv(x, c)
+
+        for i in range(self.n_down):
+            conv = getattr(self, 'up'+str(i))
+            sa = getattr(self, 'sa'+str(i))
+            x = conv(x)
+            x = sa(x)
+
+        x = self.output_conv(x)
+        return x
 
 class ProjectionDiscriminator(nn.Module):
     def __init__(self, n_class, input_nc, ndf, num_D, n_layer, norm, activation):
