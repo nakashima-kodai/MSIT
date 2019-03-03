@@ -20,7 +20,7 @@ class TrainOptions(BaseOptions):
         self.parser.add_argument('--weight_decay', type=float, default=0.0001)
 
         ''' for discriminator '''
-        self.parser.add_argument('--num_D', type=int, default=2, help='number of discriminators to use')
+        self.parser.add_argument('--num_D', type=int, default=3, help='number of discriminators to use')
         self.parser.add_argument('--n_layer', type=int, default=3, help='only used if which_model_netD==n_layers')
         self.parser.add_argument('--ndf', type=int, default=64)
 

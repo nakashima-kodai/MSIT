@@ -168,6 +168,25 @@ class LinearBlock(nn.Module):
             x = self.activation(x)
         return x
 
+class MLP(nn.Module):
+    def __init__(self, input_nc, output_nc, nc, n_blocks, norm='none', activation='relu'):
+        super(MLP, self).__init__()
+
+        model = []
+        model += [LinearBlock(input_nc, nc, norm, activation)]
+        for i in range(n_blocks-2):
+            model += [LinearBlock(nc, nc, norm, activation)]
+        model += [LinearBlock(nc, output_nc, 'none', 'none')]
+        self.model = nn.Sequential(*model)
+
+    def forward(self, x, c=None):
+        x = x.view(x.size(0), -1)
+        if c is not None:
+            x = torch.cat((x, c), dim=1)
+            return self.model(x)
+        else:
+            return self.model(x)
+
 class Self_Attention(nn.Module):
     def __init__(self, input_nc):
         super(Self_Attention, self).__init__()

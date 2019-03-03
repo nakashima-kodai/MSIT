@@ -1,6 +1,6 @@
 from options.train_options import TrainOptions
 from data.data_loader import CreateDataLoader
-from models.MSIT import MSIT
+from models.create_model import create_model
 from utils import visualizer
 
 
@@ -14,9 +14,7 @@ print('training images : {}'.format(len(data_loader)))
 print('numof_iteration : {}'.format(len(train_loader)))
 
 ### define model ###
-model = MSIT()
-model.initialize(opt)
-model.setup()
+model = create_model(opt)
 
 ### training loop ###
 print('### start training ! ###')

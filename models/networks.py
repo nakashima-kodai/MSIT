@@ -4,6 +4,38 @@ from torch.nn import utils
 from torchvision import models
 from .blocks import *
 
+################################################################################
+# Generator
+################################################################################
+class ResNetGenerator(nn.Module):
+    def __init__(self, input_nc, output_nc, ngf, n_down, n_blocks, activation):
+        super(ResNetGenerator, self).__init__()
+
+        model = [Conv2dBlock(input_nc, ngf, 7, 1, 3, 'batch', 'relu', 'reflect')]
+
+        ### down sampling ###
+        for i in range(n_down):
+            mult = 2**i
+            i_c = mult*ngf
+            o_c = 2*mult*ngf
+            model += [Conv2dBlock(i_c, o_c, 3, 2, 1, 'batch', 'relu')]
+
+        mult = 2**n_down
+        for i in range(n_blocks):
+            model += [ResBlock(mult*ngf, 'batch', 'relu', 'reflect')]
+
+        ### up sampling ###
+        for i in range(n_down):
+            mult = 2**(n_down-i)
+            i_c = mult*ngf
+            o_c = mult*ngf//2
+            model += [upConv2dBlock(i_c, o_c, 3, 1, 1, 'batch', 'relu')]
+
+        model += [Conv2dBlock(ngf, output_nc, 7, 1, 3, 'none', 'tanh', 'reflect')]
+        self.model = nn.Sequential(*model)
+
+    def forward(self, x):
+        return self.model(x)
 
 class ResNetGenerator_CBN(nn.Module):
     def __init__(self, n_class, input_nc, output_nc, ngf, n_down, n_blocks, activation):
@@ -169,6 +201,92 @@ class ResNetGenerator_CBN3(nn.Module):
 
         x = self.output_conv(x)
         return x
+
+class ResNetGenerator_AdaIN(nn.Module):
+    def __init__(self, n_class, input_nc, output_nc, ngf, n_down, n_blocks):
+        super(ResNetGenerator_AdaIN, self).__init__()
+
+        model = [Conv2dBlock(input_nc, ngf, 7, 1, 3, 'instance', 'relu', 'reflect')]  # batch_norm ?
+
+        for i in range(n_down):
+            mult = 2**i
+            i_c = mult*ngf
+            o_c = 2*mult*ngf
+            model += [Conv2dBlock(i_c, o_c, 3, 2, 1, 'instance', 'relu', 'reflect')]
+
+        mult = 2**n_down
+        for i in range(n_blocks):
+            model += [ResBlock(mult*ngf, 'adain', 'relu', 'reflect')]
+
+        for i in range(n_down):
+            mult = 2**(n_down-i)
+            i_c = mult*ngf
+            o_c = mult*ngf//2
+            model += [upConv2dBlock(i_c, o_c, 3, 1, 1, 'ln', 'relu', 'reflect')]
+
+        model += [Conv2dBlock(ngf, output_nc, 7, 1, 3, 'none', 'tanh', 'reflect')]
+        self.model = nn.Sequential(*model)
+
+        num_adain_params = self.get_num_adain_params(self.model)
+        print('num_adain_params: {}'.format(num_adain_params))
+        self.embed = nn.Embedding(n_class, num_adain_params)
+
+    def forward(self, x, c):
+        adain_params = self.embed(c)
+        self.assign_adain_params(adain_params, self.model)
+        return self.model(x)
+
+    def assign_adain_params(self, adain_params, model):
+        # assign the adain_params to the AdaIN layers in model
+        for m in model.modules():
+            if m.__class__.__name__ == "AdaptiveInstanceNorm2d":
+                mean = adain_params[:, :m.num_features]
+                std = adain_params[:, m.num_features:2*m.num_features]
+                m.bias = mean.contiguous().view(-1)
+                m.weight = std.contiguous().view(-1)
+                if adain_params.size(1) > 2*m.num_features:
+                    adain_params = adain_params[:, 2*m.num_features:]
+
+    def get_num_adain_params(self, model):
+        # return the number of AdaIN parameters needed by the model
+        num_adain_params = 0
+        for m in model.modules():
+            if m.__class__.__name__ == "AdaptiveInstanceNorm2d":
+                num_adain_params += 2*m.num_features
+        return num_adain_params
+
+################################################################################
+# Discriminator
+################################################################################
+class Discriminator(nn.Module):
+    def __init__(self, input_nc, ndf, num_D, n_layer):
+        super(Discriminator, self).__init__()
+
+        self.input_nc = input_nc
+        self.ndf = ndf
+        self.n_layer = n_layer
+
+        self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
+        self.models = nn.ModuleList()
+        for _ in range(num_D):
+            self.models.append(self.make_net())
+
+    def make_net(self):
+        model = [Conv2dBlock(self.input_nc, self.ndf, 4, 2, 2, 'none', 'lrelu')]
+        for n in range(self.n_layer):
+            mult = 2**n
+            i_c = min(mult*self.ndf, 512)
+            o_c = min(2*mult*self.ndf, 512)
+            model += [Conv2dBlock(i_c, o_c, 4, 2, 2, 'batch', 'lrelu')]
+        return nn.Sequential(*model)
+
+    def forward(self, x):
+        outputs = []
+        for model in self.models:
+            output = model(x)
+            outputs.append(output)
+            x = self.downsample(x)
+        return outputs
 
 class ProjectionDiscriminator(nn.Module):
     def __init__(self, n_class, input_nc, ndf, num_D, n_layer, norm, activation):
