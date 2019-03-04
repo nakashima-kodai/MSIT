@@ -16,12 +16,11 @@ class pix2pix(BaseModel):
             dis_input_nc = opt.output_nc + opt.label_nc
             self.dis = networks.Discriminator(dis_input_nc, opt.ndf, opt.num_D, opt.n_layer)
 
+            self.optimizer_names = ['optimizer_G', 'optimizer_D']
             self.optimizer_G = torch.optim.Adam([p for p in self.gen.parameters() if p.requires_grad],
                                                 lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
             self.optimizer_D = torch.optim.Adam([p for p in self.dis.parameters() if p.requires_grad],
                                                 lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
-            self.optimizers.append(self.optimizer_G)
-            self.optimizers.append(self.optimizer_D)
 
             self.criterionGAN = networks.GANLoss()
             self.criterionVGG = networks.VGGLoss()

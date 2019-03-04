@@ -12,8 +12,6 @@ class TrainOptions(BaseOptions):
         self.parser.add_argument('--epoch', type=int, default=100)
         self.parser.add_argument('--epoch_decay', type=int, default=100, help='# of iter to linearly decay learning rate to zero')
         self.parser.add_argument('--lr_policy', type=str, default='lambda')
-        self.parser.add_argument('--continue_train', action='store_true')
-        self.parser.add_argument('--load_epoch', type=int, default=0)
         self.parser.add_argument('--phase', default='train')
         self.parser.add_argument('--beta1', type=float, default=0.5)
         self.parser.add_argument('--lr', type=float, default=0.0002)

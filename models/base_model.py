@@ -12,13 +12,13 @@ class BaseModel():
 
         self.model_names = []
         self.loss_names = []
-        self.optimizers = []
+        self.optimizer_names = []
 
     def setup(self):
         if self.isTrain:
-            self.schedulers = [utils.get_scheduler(optimizer, self.opt) for optimizer in self.optimizers]
+            self.schedulers = self.get_schedulers()
 
-        if not self.isTrain or self.opt.continue_train:
+        if not self.isTrain:
             self.load_networks(self.opt.load_epoch)
         else:
             self.init_networks()
@@ -31,15 +31,23 @@ class BaseModel():
             net = getattr(self, name)
             utils.init_weights(net, self.opt.init_type)
 
+    def get_schedulers(self):
+        schedulers = []
+        for name in self.optimizer_names:
+            optimizer = getattr(self, name)
+            schedulers.append(utils.get_scheduler(optimizer, self.opt))
+        return schedulers
+
     def to_cuda(self):
         for name in self.model_names:
             net = getattr(self, name)
-            net = torch.nn.DataParallel(net.cuda(), self.opt.gpu_ids)
+            net = torch.nn.DataParallel(net.cuda(), device_ids=self.opt.gpu_ids)
+            setattr(self, name, net)
 
     def update_lr(self):
         for scheduler in self.schedulers:
             scheduler.step()
-        lr = self.optimizers[0].param_groups[0]['lr']
+        lr = getattr(self, self.optimizer_names[0]).param_groups[0]['lr']
         print('learning rate = %.7f' % lr)
 
     def save_networks(self, epoch):
@@ -48,8 +56,9 @@ class BaseModel():
             save_path = os.path.join(self.save_dir, save_filename)
             net = getattr(self, name)
 
-            print('saving the model to {}'.format(save_path))
-            torch.save(net.cpu().state_dict(), save_path)
+            print('saving the {} to {}'.format(name, save_path))
+            state_dict = net.module.cpu().state_dict()
+            torch.save(state_dict, save_path)
             net.cuda()
 
     # load models from the disk
@@ -61,7 +70,7 @@ class BaseModel():
             load_path = os.path.join(save_dir, load_filename)
             net = getattr(self, name)
 
-            print('loading the model from {}'.format(load_path))
+            print('loading the {} from {}'.format(name, load_path))
             state_dict = torch.load(load_path)
             net.load_state_dict(state_dict)
 

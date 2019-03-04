@@ -18,8 +18,7 @@ model = create_model(opt)
 
 ### training loop ###
 print('### start training ! ###')
-start_epoch = opt.load_epoch+1 if opt.load_epoch else 0
-for epoch in range(start_epoch, opt.epoch+opt.epoch_decay+1):
+for epoch in range(opt.epoch+opt.epoch_decay+1):
     for iter, data in enumerate(train_loader):
 
         model.set_variables(data)
