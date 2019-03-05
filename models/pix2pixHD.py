@@ -3,24 +3,35 @@ from .base_model import BaseModel
 from . import networks
 
 
-class pix2pix(BaseModel):
+class pix2pixHD(BaseModel):
     def initialize(self, opt):
         BaseModel.initialize(self, opt)
 
         self.loss_names = ['gen', 'dis', 'adv', 'vgg']
         self.model_names = ['gen']
-        self.gen = networks.ResNetGenerator(opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
+        self.gen = networks.ResNetEnhancer(opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
 
         if self.isTrain:
             self.model_names += ['dis']
             dis_input_nc = opt.output_nc + opt.label_nc
             self.dis = networks.Discriminator(dis_input_nc, opt.ndf, opt.num_D, opt.n_layer)
 
+            ### set optimizers ###
             self.optimizer_names = ['optimizer_G', 'optimizer_D']
-            self.optimizer_G = torch.optim.Adam([p for p in self.gen.parameters() if p.requires_grad],
-                                                lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
-            self.optimizer_D = torch.optim.Adam([p for p in self.dis.parameters() if p.requires_grad],
-                                                lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
+            if opt.n_epoch_fix_local > 0:
+                finetune_list = set()
+                gen_dict = dict(self.gen.named_parameters())
+                params = []
+                for k, v in gen_dict.items():
+                    if k.startswith('model'+str(opt.n_enhancers)):
+                        params += [v]
+                        finetune_list.add(k.split('.')[0])
+                print('------------- Only training the local enhancer network (for {} epochs) ------------'.format(opt.n_epoch_fix_local))
+                print('The layers that are finetuned are ', sorted(finetune_list))
+            else:
+                params = list(self.gen.parameters())
+            self.optimizer_G = torch.optim.Adam(params, lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
+            self.optimizer_D = torch.optim.Adam(self.dis.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
 
             self.criterionGAN = networks.GANLoss()
             self.criterionVGG = networks.VGGLoss()
@@ -68,3 +79,8 @@ class pix2pix(BaseModel):
     def optimize_parameters(self):
         self.update_D()
         self.update_G()
+
+    def update_params(self):
+        params = list(self.gen.parameters())
+        self.optimizer_G = torch.optim.Adam(params, lr=self.opt.lr, betas=(self.opt.beta1, 0.999), weight_decay=self.opt.weight_decay)
+        print('------------ Now also finetuning global generator -----------')

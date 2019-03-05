@@ -4,6 +4,52 @@ from torch.nn import utils
 from torchvision import models
 from .blocks import *
 
+
+################################################################################
+# Enhancer
+################################################################################
+class ResNetEnhancer(nn.Module):
+    def __init__(self, input_nc, output_nc, ngf, n_down_global, n_blocks_global,
+                 n_enhancers, n_blocks_local):
+        super(ResNetEnhancer, self).__init__()
+        self.n_enhancers = n_enhancers
+
+        ### global generator model ###
+        ngf_global = ngf * (2**n_enhancers)
+        model_global = ResNetGenerator(input_nc, output_nc, ngf_global, n_down_global, n_blocks_global, 'relu').model
+        self.model = nn.Sequential(*model_global[:-1])
+
+        ### local enhancer model ###
+        for n in range(1, n_enhancers+1):
+            ngf_global = ngf * (2**(n_enhancers-n))
+            model_down = [Conv2dBlock(input_nc, ngf_global, 7, 1, 3, 'instance', 'relu', 'reflect')]
+            model_down += [Conv2dBlock(ngf_global, 2*ngf_global, 3, 2, 1, 'instance')]
+
+            model_up = [ResBlocks(2*ngf_global, n_blocks_local)]
+            model_up += [upConv2dBlock(2*ngf_global, ngf_global, 3, 1, 1, 'instance')]
+
+            if n == n_enhancers:
+                model_up += [Conv2dBlock(ngf, output_nc, 7, 1, 3, 'none', 'tanh', 'reflect')]
+
+            setattr(self, 'model'+str(n)+'_down', nn.Sequential(*model_down))
+            setattr(self, 'model'+str(n)+'_up', nn.Sequential(*model_up))
+
+        self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
+
+    def forward(self, x):
+        x_down = [x]
+        for n in range(self.n_enhancers):
+            x_down.append(self.downsample(x_down[-1]))
+
+        output = self.model(x_down[-1])
+        for n in range(1, self.n_enhancers+1):
+            model_down = getattr(self, 'model'+str(n)+'_down')
+            model_up = getattr(self, 'model'+str(n)+'_up')
+
+            x_n = x_down[self.n_enhancers-n]
+            output = model_up(model_down(x_n) + output)
+        return output
+
 ################################################################################
 # Generator
 ################################################################################
@@ -11,25 +57,25 @@ class ResNetGenerator(nn.Module):
     def __init__(self, input_nc, output_nc, ngf, n_down, n_blocks, activation):
         super(ResNetGenerator, self).__init__()
 
-        model = [Conv2dBlock(input_nc, ngf, 7, 1, 3, 'batch', 'relu', 'reflect')]
+        model = [Conv2dBlock(input_nc, ngf, 7, 1, 3, 'instance', 'relu', 'reflect')]
 
         ### down sampling ###
         for i in range(n_down):
             mult = 2**i
             i_c = mult*ngf
             o_c = 2*mult*ngf
-            model += [Conv2dBlock(i_c, o_c, 3, 2, 1, 'batch', 'relu')]
+            model += [Conv2dBlock(i_c, o_c, 3, 2, 1, 'instance', 'relu')]
 
         mult = 2**n_down
         for i in range(n_blocks):
-            model += [ResBlock(mult*ngf, 'batch', 'relu', 'reflect')]
+            model += [ResBlock(mult*ngf, 'instance', 'relu', 'reflect')]
 
         ### up sampling ###
         for i in range(n_down):
             mult = 2**(n_down-i)
             i_c = mult*ngf
             o_c = mult*ngf//2
-            model += [upConv2dBlock(i_c, o_c, 3, 1, 1, 'batch', 'relu')]
+            model += [upConv2dBlock(i_c, o_c, 3, 1, 1, 'instance', 'relu')]
 
         model += [Conv2dBlock(ngf, output_nc, 7, 1, 3, 'none', 'tanh', 'reflect')]
         self.model = nn.Sequential(*model)

@@ -10,7 +10,7 @@ class BaseOptions():
         self.initialized = False
 
     def initialize(self):
-        ''' experiment specifics '''
+        ### experiment specifics ###
         self.parser.add_argument('--model', type=str, default='MSIT')
         self.parser.add_argument('--name', type=str, default='label2image')
         self.parser.add_argument('--gpu_ids', type=str, default='0')
@@ -18,32 +18,35 @@ class BaseOptions():
         self.parser.add_argument('--sample_dir', type=str, default='./samples')
         self.parser.add_argument('--result_dir', type=str, default='./results')
 
-        ''' input/output sizes '''
-        self.parser.add_argument('--batch_size', type=int, default=16)
-        self.parser.add_argument('--load_size', type=int, default=128)
-        self.parser.add_argument('--crop_size', type=int, default=128)
+        ### input/output sizes ###
+        self.parser.add_argument('--batch_size', type=int, default=64)
+        self.parser.add_argument('--load_size', type=int, default=64)
+        self.parser.add_argument('--crop_size', type=int, default=64)
         self.parser.add_argument('--label_nc', type=int, default=3)
         self.parser.add_argument('--input_nc', type=int, default=3)
         self.parser.add_argument('--output_nc', type=int, default=3)
 
-        ''' input label '''
+        ### input label ###
         self.parser.add_argument('--n_weather_class', type=int, default=6)
         self.parser.add_argument('--n_timeofday_class', type=int, default=3)
 
-        ''' for setting inputs '''
+        ### for setting inputs ###
         self.parser.add_argument('--data_root', type=str, default='../datasets/bdd100k')
         self.parser.add_argument('--scale_transform', type=str, default='resize', help='scale images to this size at load time [resize, resize_and_crop, crop, scale_width, scale_width_and_crop]')
         self.parser.add_argument('--no_shuffle', action='store_true')
         self.parser.add_argument('--no_flip', action='store_true')
 
-        ''' for generator '''
+        ### for generator and enhancer ###
         self.parser.add_argument('--ngf', type=int, default=64)
-        self.parser.add_argument('--n_down', type=int, default=4)
-        self.parser.add_argument('--n_blocks', type=int, default=6)
+        # for generator #
+        self.parser.add_argument('--n_down', type=int, default=3)
+        self.parser.add_argument('--n_blocks', type=int, default=3)
+        # for enhancer #
+        self.parser.add_argument('--n_enhancers', type=int, default=1)
+        self.parser.add_argument('--n_blocks_local', type=int, default=3)
+        self.parser.add_argument('--n_epoch_fix_local', type=int, default=0)
 
-        ''' for generator/discriminator '''
-        self.parser.add_argument('--norm', type=str, default='instance', help='[instance, batch]')
-        self.parser.add_argument('--padding_type', type=str, default='reflect', help='[reflect, instance, zero]')
+        ### for generator/discriminator ###
         self.parser.add_argument('--init_type', type=str, default='normal', help='[normal, xavier, kaiming]')
 
         self.initialized = True

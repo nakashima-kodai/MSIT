@@ -18,7 +18,7 @@ class BaseModel():
         if self.isTrain:
             self.schedulers = self.get_schedulers()
 
-        if not self.isTrain:
+        if not self.isTrain or 'HD' in self.opt.model:
             self.load_networks(self.opt.load_epoch)
         else:
             self.init_networks()
@@ -62,17 +62,26 @@ class BaseModel():
             net.cuda()
 
     # load models from the disk
-    def load_networks(self, epoch, save_dir=None):
+    def load_networks(self, epoch):
         for name in self.model_names:
             load_filename = '%s_%s.pth' % (epoch, name)
-            if save_dir is None:
+            if self.opt.load_pretrain is not None:
+                save_dir = self.opt.load_pretrain
+            else:
                 save_dir = self.save_dir
             load_path = os.path.join(save_dir, load_filename)
             net = getattr(self, name)
 
             print('loading the {} from {}'.format(name, load_path))
             state_dict = torch.load(load_path)
-            net.load_state_dict(state_dict)
+            try:
+                net.load_state_dict(state_dict)
+            except:
+                network_dict = net.state_dict()
+                for k, v in state_dict.items():
+                    if k in network_dict:
+                        network_dict[k] = v
+                net.load_state_dict(network_dict)
 
     def print_networks(self):
         print('---------- Networks initialized -------------')
@@ -100,3 +109,6 @@ class BaseModel():
             if net is not None:
                 for param in net.parameters():
                     param.requires_grad = requires_grad
+
+    def update_params(self):
+        pass

@@ -40,3 +40,6 @@ for epoch in range(opt.epoch+opt.epoch_decay+1):
         model.save_networks(epoch)
 
     model.update_lr()
+
+    if (opt.n_epoch_fix_local != 0) and (epoch == opt.n_epoch_fix_local):
+        model.update_params()

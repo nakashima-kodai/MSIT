@@ -9,6 +9,11 @@ def create_model(opt):
         model = pix2pix()
         model.initialize(opt)
         model.setup()
+    elif opt.model == 'pix2pixHD':
+        from .pix2pixHD import pix2pixHD
+        model = pix2pixHD()
+        model.initialize(opt)
+        model.setup()
     else:
         raise NotImplementedError('model [{}] is not found'.format(opt.model))
 
