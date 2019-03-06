@@ -324,6 +324,7 @@ class Discriminator(nn.Module):
             i_c = min(mult*self.ndf, 512)
             o_c = min(2*mult*self.ndf, 512)
             model += [Conv2dBlock(i_c, o_c, 4, 2, 2, 'batch', 'lrelu')]
+        model += [nn.Conv2d(o_c, 1, 1, 1, 0)]
         return nn.Sequential(*model)
 
     def forward(self, x):
