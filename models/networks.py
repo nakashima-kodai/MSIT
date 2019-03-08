@@ -323,7 +323,7 @@ class Discriminator(nn.Module):
             mult = 2**n
             i_c = min(mult*self.ndf, 512)
             o_c = min(2*mult*self.ndf, 512)
-            model += [Conv2dBlock(i_c, o_c, 4, 2, 2, 'batch', 'lrelu')]
+            model += [Conv2dBlock(i_c, o_c, 4, 2, 2, 'instance', 'lrelu')]
         model += [nn.Conv2d(o_c, 1, 1, 1, 0)]
         return nn.Sequential(*model)
 
@@ -412,13 +412,13 @@ class GANLoss(nn.Module):
         if isinstance(input, list):
             loss = 0
             for input_i in input:
-                pred = input_i[-1]
+                pred = input_i
                 target_tensor = self.get_target_tensor(pred, target_is_real)
                 loss += self.loss(pred, target_tensor)
             return loss
         else:
-            target_tensor = self.get_target_tensor(input[-1], target_is_real)
-            return self.loss(input[-1], target_tensor)
+            target_tensor = self.get_target_tensor(input, target_is_real)
+            return self.loss(input, target_tensor)
 
 class VGGLoss(nn.Module):
     def __init__(self):
