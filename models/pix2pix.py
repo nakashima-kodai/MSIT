@@ -59,7 +59,6 @@ class pix2pix(BaseModel):
 
         D_fake = self.dis(fake_pair)
         self.loss_adv = self.criterionGAN(D_fake, True)
-        # self.loss_rec = self.recon_criterion(self.fake_image, self.image) * self.opt.lambda_rec
         self.loss_vgg = self.criterionVGG(self.fake_image, self.image) * self.opt.lambda_vgg
         self.loss_gen = self.loss_adv + self.loss_vgg
         self.loss_gen.backward()
