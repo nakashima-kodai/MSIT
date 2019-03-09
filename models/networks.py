@@ -275,10 +275,15 @@ class ResNetGenerator_AdaIN(nn.Module):
 
         num_adain_params = self.get_num_adain_params(self.model)
         print('num_adain_params: {}'.format(num_adain_params))
-        self.embed = nn.Embedding(n_class, num_adain_params)
+        self.mlp = MLP(n_class, num_adain_params, 256, 3, 'none', 'relu')
 
     def forward(self, x, c):
-        adain_params = self.embed(c)
+        # category to one-hot
+        c_onehot = torch.cuda.FloatTensor(c.size(0), self.n_class).zero_()
+        c = c.unsqueeze(1)
+        c_onehot.scatter_(1, c, 1)
+
+        adain_params = self.mlp(c_onehot)
         self.assign_adain_params(adain_params, self.model)
         return self.model(x)
 
