@@ -27,12 +27,12 @@ class MSIT(BaseModel):
 
             ### set optimizers ###
             self.optimizer_names = ['optimizer_G', 'optimizer_D']
-            # self.optimizer_G = torch.optim.Adam(self.gen.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
-            # self.optimizer_D = torch.optim.Adam(self.dis.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
-            self.optimizer_G = torch.optim.Adam([p for p in self.gen.parameters() if p.requires_grad],
-                                                lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
-            self.optimizer_D = torch.optim.Adam([p for p in self.dis.parameters() if p.requires_grad],
-                                                lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
+            self.optimizer_G = torch.optim.Adam(self.gen.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
+            self.optimizer_D = torch.optim.Adam(self.dis.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
+            # self.optimizer_G = torch.optim.Adam([p for p in self.gen.parameters() if p.requires_grad],
+            #                                     lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
+            # self.optimizer_D = torch.optim.Adam([p for p in self.dis.parameters() if p.requires_grad],
+            #                                     lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
 
             ### set loss functions ###
             self.criterionGAN = networks.GANLoss()

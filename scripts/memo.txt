@@ -1,0 +1,2 @@
+・train_MSIT_128p_weather_01.sh
+ ResNetGenerator_CBN, ProjectionDiscriminator

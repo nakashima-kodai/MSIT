@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn import utils
 from torchvision import models
 from .blocks import *
@@ -373,6 +374,7 @@ class ProjectionDiscriminator(nn.Module):
         outputs = []
         for model, linear, embed in zip(self.models, self.linears, self.embeds):
             h = model(x)
+            h = F.relu(h)
             h = torch.sum(h, dim=(2, 3))
             output = linear(h)
             output += torch.sum(embed(c)*h, dim=1, keepdim=True)
