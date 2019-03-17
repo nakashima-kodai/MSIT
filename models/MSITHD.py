@@ -4,19 +4,15 @@ from .base_model import BaseModel
 from . import networks
 
 
-class MSIT(BaseModel):
+class MSITHD(BaseModel):
     def initialize(self, opt):
         BaseModel.initialize(self, opt)
 
         n_class = opt.n_weather_class
 
-        # self.loss_names = ['gen', 'dis', 'adv', 'rec']
         self.loss_names = ['gen', 'dis', 'adv', 'vgg']
         self.model_names = ['gen']
-        # self.gen = networks.ResNetGenerator_CBN(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
-        # self.gen = networks.ResNetGenerator_CBN2(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
-        # self.gen = networks.ResNetGenerator_CBN3(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
-        self.gen = networks.ResNetGenerator_AdaIN(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks)
+        self.gen = networks.ResNetEnhancer_CBN2(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
 
         if self.isTrain:
             ### define Discriminator ###
@@ -27,12 +23,20 @@ class MSIT(BaseModel):
 
             ### set optimizers ###
             self.optimizer_names = ['optimizer_G', 'optimizer_D']
-            self.optimizer_G = torch.optim.Adam(self.gen.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
+            if opt.n_epoch_fix_local > 0:
+                finetune_list = set()
+                gen_dict = dict(self.gen.named_parameters())
+                params = []
+                for k, v in gen_dict.items():
+                    if k.startswith('model'+str(opt.n_enhancers)):
+                        params += [v]
+                        finetune_list.add(k.split('.')[0])
+                print('------------- Only training the local enhancer network (for {} epochs) ------------'.format(opt.n_epoch_fix_local))
+                print('The layers that are finetuned are ', sorted(finetune_list))
+            else:
+                params = list(self.gen.parameters())
+            self.optimizer_G = torch.optim.Adam(params, lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
             self.optimizer_D = torch.optim.Adam(self.dis.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
-            # self.optimizer_G = torch.optim.Adam([p for p in self.gen.parameters() if p.requires_grad],
-            #                                     lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
-            # self.optimizer_D = torch.optim.Adam([p for p in self.dis.parameters() if p.requires_grad],
-            #                                     lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.weight_decay)
 
             ### set loss functions ###
             self.criterionGAN = networks.GANLoss()
@@ -86,11 +90,8 @@ class MSIT(BaseModel):
         self.update_D()
         self.update_G()
 
-    def forward(self):
-        fake_images = []
-        with torch.no_grad():
-            for c in range(opt.n_weather_class):
-                fake_image = self.gen(self.label, c)
-            fake_images.append(fake_image.cpu())
-
-        return fake_images
+    def update_params(self):
+        params = list(self.gen.parameters())
+        self.optimizer_G = torch.optim.Adam(params, lr=self.opt.lr, betas=(self.opt.beta1, 0.999), weight_decay=self.opt.weight_decay)
+        print('------------ Now also finetuning global generator -----------')
+        self.get_schedulers()

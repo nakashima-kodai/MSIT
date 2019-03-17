@@ -65,7 +65,7 @@ class BaseModel():
     def load_networks(self, epoch):
         for name in self.model_names:
             load_filename = '%s_%s.pth' % (epoch, name)
-            if self.opt.load_pretrain is not None:
+            if not self.opt.load_pretrain == '':
                 save_dir = self.opt.load_pretrain
             else:
                 save_dir = self.save_dir
@@ -78,9 +78,13 @@ class BaseModel():
                 net.load_state_dict(state_dict)
             except:
                 network_dict = net.state_dict()
+                not_initialized = set()
                 for k, v in state_dict.items():
                     if k in network_dict:
                         network_dict[k] = v
+                    else:
+                        not_initialized.add(k.splize('.')[0])
+                print(sorted(not_initialized))
                 net.load_state_dict(network_dict)
 
     def print_networks(self):

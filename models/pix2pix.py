@@ -67,3 +67,9 @@ class pix2pix(BaseModel):
     def optimize_parameters(self):
         self.update_D()
         self.update_G()
+
+    def forward(self):
+        with torch.no_grad():
+            fake_image = self.gen(self.label)
+
+        return fake_image.cpu()

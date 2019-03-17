@@ -12,6 +12,7 @@ class pix2pixHD(BaseModel):
         self.gen = networks.ResNetEnhancer(opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
 
         if self.isTrain:
+            ### define Discriminator ###
             self.model_names += ['dis']
             dis_input_nc = opt.output_nc + opt.label_nc
             self.dis = networks.Discriminator(dis_input_nc, opt.ndf, opt.num_D, opt.n_layer)
@@ -84,3 +85,10 @@ class pix2pixHD(BaseModel):
         params = list(self.gen.parameters())
         self.optimizer_G = torch.optim.Adam(params, lr=self.opt.lr, betas=(self.opt.beta1, 0.999), weight_decay=self.opt.weight_decay)
         print('------------ Now also finetuning global generator -----------')
+        self.get_schedulers()
+
+    def forward(self):
+        with torch.no_grad():
+            fake_image = self.gen(self.label)
+
+        return fake_image.cpu()

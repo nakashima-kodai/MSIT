@@ -13,10 +13,13 @@ class BaseOptions():
         ### experiment specifics ###
         self.parser.add_argument('--model', type=str, default='MSIT')
         self.parser.add_argument('--name', type=str, default='label2image')
+        self.parser.add_argument('--phase', default='train')
         self.parser.add_argument('--gpu_ids', type=str, default='0')
         self.parser.add_argument('--ckpt_dir', type=str, default='./ckpt')
         self.parser.add_argument('--sample_dir', type=str, default='./samples')
         self.parser.add_argument('--result_dir', type=str, default='./results')
+        self.parser.add_argument('--load_pretrain', type=str, default='')
+        self.parser.add_argument('--load_epoch', type=int, default=0)
 
         ### input/output sizes ###
         self.parser.add_argument('--batch_size', type=int, default=64)

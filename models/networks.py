@@ -51,6 +51,63 @@ class ResNetEnhancer(nn.Module):
             output = model_up(model_down(x_n) + output)
         return output
 
+class ResNetEnhancer_CBN2(nn.Module):
+    def __init__(self, n_class, input_nc, output_nc, ngf, n_down_global, n_blocks_global,
+                 n_enhancers, n_blocks_local):
+        super(ResNetEnhancer_CBN2, self).__init__()
+        self.n_enhancers = n_enhancers
+        self.n_blocks_local = n_blocks_local
+
+        ### global generator model ###
+        ngf_global = ngf * (2**n_enhancers)
+        model_global = ResNetGenerator_CBN2(n_class, input_nc, output_nc, ngf_global, n_down_global, n_blocks_global, 'relu')
+        self.model = nn.Module()
+        for name, module in model_global.named_children():
+            if not 'output_conv' in name:
+                self.model.add_module(name, module)
+
+        ### local enhancer model ###
+        for n in range(1, n_enhancers+1):
+            ngf_global = ngf * (2**(n_enhancers-n))
+            # input and down module #
+            model_down = [Conv2dBlock(input_nc, ngf_global, 7, 1, 3, 'instance', 'relu', 'reflect')]
+            model_down += [Conv2dBlock(ngf_global, 2*ngf_global, 3, 2, 1, 'instance')]
+            setattr(self, 'model'+str(n)+'_down', nn.Sequential(*model_down))
+
+            # up module #
+            for i in range(n_blocks_local):
+                setattr(self, 'model'+str(n)+'_up'+str(i), ResBlock_CBN(n_class, 2*ngf_global, 'relu', 'reflect'))
+            setattr(self, 'model'+str(n)+'_up'+str(i+1), upConv2dBlock(2*ngf_global, ngf_global, 3, 1, 1, 'instance'))
+
+            # output module #
+            if n == n_enhancers:
+                setattr(self, 'model'+str(n)+'_up'+str(i+2), Conv2dBlock(ngf, output_nc, 7, 1, 3, 'none', 'tanh', 'reflect'))
+
+        self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
+
+    def forward(self, x, c):
+        x_down = [x]
+        for n in range(self.n_enhancers):
+            x_down.append(self.downsample(x_down[-1]))
+
+        output = self.model(x_down[-1])
+        for n in range(1, self.n_enhancers+1):
+            x_n = x_down[self.n_enhancers-n]
+
+            model_down = getattr(self, 'model'+str(n)+'_down')
+            output = model_down(x_n) + output
+
+            for i in range(self.n_blocks_local):
+                model_up = getattr(self, 'model'+str(n)+'_up'+str(i))
+                output = model_up(output, c)
+
+            o = 2 if n==self.n_enhancers else 1
+            for i in range(o):
+                model_up = getattr(self, 'model'+str(n)+'_up'+str(self.n_blocks_local+i-1))
+                output = model_up(output)
+
+        return output
+
 ################################################################################
 # Generator
 ################################################################################
