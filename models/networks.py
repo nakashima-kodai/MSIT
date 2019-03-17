@@ -252,6 +252,7 @@ class ResNetGenerator_CBN3(nn.Module):
 class ResNetGenerator_AdaIN(nn.Module):
     def __init__(self, n_class, input_nc, output_nc, ngf, n_down, n_blocks):
         super(ResNetGenerator_AdaIN, self).__init__()
+        self.n_class = n_class
 
         model = [Conv2dBlock(input_nc, ngf, 7, 1, 3, 'instance', 'relu', 'reflect')]  # batch_norm ?
 

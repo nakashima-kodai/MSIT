@@ -1,2 +1,8 @@
 ・train_MSIT_128p_weather_01.sh
  ResNetGenerator_CBN, ProjectionDiscriminator
+
+・train_MSIT_128p_weather_02.sh
+ ResNetGenerator_CBN2, Discriminator
+
+・train_MSIT_128p_weather_03.sh
+ ResNetGenerator_AdaIN, Discriminator
