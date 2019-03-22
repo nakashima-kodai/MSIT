@@ -10,7 +10,7 @@ opt = TestOptions().parse()
 print('### prepare DataLoader ###')
 data_loader = CreateDataLoader(opt)
 test_loader = data_loader.load_data()
-print('training images : {}'.format(len(data_loader)))
+print('test images     : {}'.format(len(data_loader)))
 print('numof_iteration : {}'.format(len(test_loader)))
 
 ### define model ###
@@ -22,8 +22,5 @@ for iter, data in enumerate(test_loader):
     model.set_variables(data)
     fake_image = model.forward()
 
-    if isinstance(fake_image, list):
-        fake_image = torch.cat(fake_image, dim=0)
-
     fake_image = (fake_image + 1.0) / 2.0
-    visualizer.save_test_images(opt, iter, data['label'], fake_image)
+    visualizer.save_test_images(opt, iter, data['label'], fake_image, nrow=7)

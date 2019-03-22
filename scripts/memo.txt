@@ -6,3 +6,6 @@
 
 ・train_MSIT_128p_weather_03.sh
  ResNetGenerator_AdaIN, Discriminator
+
+・train_MSIT_128p_weather_04
+ ResNetGenerator_CBN3, DiscriminatorSA

@@ -282,7 +282,8 @@ class ResNetGenerator_CBN3(nn.Module):
             o_c = mult*ngf//2
             # setattr(self, 'up'+str(i), trConv2dBlock_CBN(n_class, i_c, o_c, 2, 2, 0, activation))
             setattr(self, 'up'+str(i), upConv2dBlock(i_c, o_c, 3, 1, 1, 'instance', activation, 'reflect'))
-            setattr(self, 'sa'+str(i), Self_Attention(o_c))
+            if i > n_down-3:
+                setattr(self, 'sa'+str(i), Self_Attention(o_c))
 
         self.output_conv = Conv2dBlock(ngf, output_nc, 7, 1, 3, 'none', 'tanh', 'reflect')
 
@@ -299,9 +300,14 @@ class ResNetGenerator_CBN3(nn.Module):
 
         for i in range(self.n_down):
             conv = getattr(self, 'up'+str(i))
-            sa = getattr(self, 'sa'+str(i))
+            if i > self.n_down-3:
+                sa = getattr(self, 'sa'+str(i))
+            else:
+                sa = None
             x = conv(x)
-            x = sa(x)
+
+            if sa is not None:
+                x = sa(x)
 
         x = self.output_conv(x)
         return x
@@ -388,6 +394,39 @@ class Discriminator(nn.Module):
             i_c = min(mult*self.ndf, 512)
             o_c = min(2*mult*self.ndf, 512)
             model += [Conv2dBlock(i_c, o_c, 4, 2, 2, 'instance', 'lrelu')]
+        model += [nn.Conv2d(o_c, 1, 1, 1, 0)]
+        return nn.Sequential(*model)
+
+    def forward(self, x):
+        outputs = []
+        for model in self.models:
+            output = model(x)
+            outputs.append(output)
+            x = self.downsample(x)
+        return outputs
+
+class DiscriminatorSA(nn.Module):
+    def __init__(self, input_nc, ndf, num_D, n_layer):
+        super(DiscriminatorSA, self).__init__()
+
+        self.input_nc = input_nc
+        self.ndf = ndf
+        self.n_layer = n_layer
+
+        self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
+        self.models = nn.ModuleList()
+        for _ in range(num_D):
+            self.models.append(self.make_net())
+
+    def make_net(self):
+        model = [Conv2dBlock(self.input_nc, self.ndf, 4, 2, 2, 'none', 'lrelu')]
+        for n in range(self.n_layer):
+            mult = 2**n
+            i_c = min(mult*self.ndf, 512)
+            o_c = min(2*mult*self.ndf, 512)
+            model += [Conv2dBlock(i_c, o_c, 4, 2, 2, 'instance', 'lrelu')]
+            if n > self.n_layer-3:
+                model += [Self_Attention(o_c)]
         model += [nn.Conv2d(o_c, 1, 1, 1, 0)]
         return nn.Sequential(*model)
 

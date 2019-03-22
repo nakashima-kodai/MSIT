@@ -23,6 +23,8 @@ class BaseModel():
         else:
             self.init_networks()
 
+        self.print_networks()
+
         if len(self.opt.gpu_ids):
             self.to_cuda()
 
@@ -88,16 +90,16 @@ class BaseModel():
                 net.load_state_dict(network_dict)
 
     def print_networks(self):
-        print('---------- Networks initialized -------------')
         for name in self.model_names:
             if isinstance(name, str):
                 net = getattr(self, name)
                 num_params = 0
                 for param in net.parameters():
                     num_params += param.numel()
-                print(net)
-                print('[Network %s] Total number of parameters : %.3f M' % (name, num_params / 1e6))
-        print('-----------------------------------------------')
+            save_path = os.path.join(self.save_dir, name + '.txt')
+            with open(save_path, 'wt') as f:
+                f.write(str(net))
+                f.write('\nTotal number of parameters: {}'.format(num_params))
 
     def get_current_losses(self):
         errors_ret = OrderedDict()
