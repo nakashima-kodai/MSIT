@@ -80,13 +80,13 @@ class BaseModel():
                 net.load_state_dict(state_dict)
             except:
                 network_dict = net.state_dict()
-                not_initialized = set()
+                not_used = set()
                 for k, v in state_dict.items():
                     if k in network_dict:
                         network_dict[k] = v
                     else:
-                        not_initialized.add(k.splize('.')[0])
-                print(sorted(not_initialized))
+                        not_used.add(k.split('.')[0])
+                print('not used layer in pretrained model: {}'.format(sorted(not_used)))
                 net.load_state_dict(network_dict)
 
     def print_networks(self):

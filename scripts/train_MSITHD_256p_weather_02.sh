@@ -1,0 +1,1 @@
+python -B train.py --model=MSITHD --name=MSITHD_256p_weather_02 --gpu_ids=0,1 --batch_size=16 --load_size=256 --crop_size=256 --ngf=32 --n_epoch_fix_local=20 --load_pretrain=./ckpt/MSIT_128p_weather_02 --num_D=3 --load_epoch=200 --n_down=4 --n_blocks=6

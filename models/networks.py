@@ -61,10 +61,11 @@ class ResNetEnhancer_CBN2(nn.Module):
         ### global generator model ###
         ngf_global = ngf * (2**n_enhancers)
         model_global = ResNetGenerator_CBN2(n_class, input_nc, output_nc, ngf_global, n_down_global, n_blocks_global, 'relu')
-        self.model = nn.Module()
+        self.name_list = []
         for name, module in model_global.named_children():
             if not 'output_conv' in name:
-                self.model.add_module(name, module)
+                setattr(self, name, module)
+                self.name_list.append(name)
 
         ### local enhancer model ###
         for n in range(1, n_enhancers+1):
@@ -72,16 +73,16 @@ class ResNetEnhancer_CBN2(nn.Module):
             # input and down module #
             model_down = [Conv2dBlock(input_nc, ngf_global, 7, 1, 3, 'instance', 'relu', 'reflect')]
             model_down += [Conv2dBlock(ngf_global, 2*ngf_global, 3, 2, 1, 'instance')]
-            setattr(self, 'model'+str(n)+'_down', nn.Sequential(*model_down))
+            setattr(self, 'model'+str(n)+'_d', nn.Sequential(*model_down))
 
             # up module #
             for i in range(n_blocks_local):
-                setattr(self, 'model'+str(n)+'_up'+str(i), ResBlock_CBN(n_class, 2*ngf_global, 'relu', 'reflect'))
-            setattr(self, 'model'+str(n)+'_up'+str(i+1), upConv2dBlock(2*ngf_global, ngf_global, 3, 1, 1, 'instance'))
+                setattr(self, 'model'+str(n)+'_u'+str(i), ResBlock_CBN(n_class, 2*ngf_global, 'relu', 'reflect'))
+            setattr(self, 'model'+str(n)+'_u'+str(i+1), upConv2dBlock(2*ngf_global, ngf_global, 3, 1, 1, 'instance'))
 
             # output module #
             if n == n_enhancers:
-                setattr(self, 'model'+str(n)+'_up'+str(i+2), Conv2dBlock(ngf, output_nc, 7, 1, 3, 'none', 'tanh', 'reflect'))
+                setattr(self, 'model'+str(n)+'_u'+str(i+2), Conv2dBlock(ngf, output_nc, 7, 1, 3, 'none', 'tanh', 'reflect'))
 
         self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
 
@@ -90,20 +91,29 @@ class ResNetEnhancer_CBN2(nn.Module):
         for n in range(self.n_enhancers):
             x_down.append(self.downsample(x_down[-1]))
 
-        output = self.model(x_down[-1])
+        # global #
+        output = x_down[-1]
+        for n in self.name_list:
+            conv = getattr(self, n)
+            if 'block' in n:
+                output = conv(output, c)
+            else:
+                output = conv(output)
+
+        # local #
         for n in range(1, self.n_enhancers+1):
             x_n = x_down[self.n_enhancers-n]
 
-            model_down = getattr(self, 'model'+str(n)+'_down')
+            model_down = getattr(self, 'model'+str(n)+'_d')
             output = model_down(x_n) + output
 
             for i in range(self.n_blocks_local):
-                model_up = getattr(self, 'model'+str(n)+'_up'+str(i))
+                model_up = getattr(self, 'model'+str(n)+'_u'+str(i))
                 output = model_up(output, c)
 
             o = 2 if n==self.n_enhancers else 1
             for i in range(o):
-                model_up = getattr(self, 'model'+str(n)+'_up'+str(self.n_blocks_local+i-1))
+                model_up = getattr(self, 'model'+str(n)+'_u'+str(self.n_blocks_local+i))
                 output = model_up(output)
 
         return output
