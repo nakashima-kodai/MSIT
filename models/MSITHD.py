@@ -12,7 +12,8 @@ class MSITHD(BaseModel):
 
         self.loss_names = ['gen', 'dis', 'adv', 'vgg']
         self.model_names = ['gen']
-        self.gen = networks.ResNetEnhancer_CBN2(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
+        # self.gen = networks.ResNetEnhancer_CBN2(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
+        self.gen = networks.ResNetEnhancer_AdaIN(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
 
         if self.isTrain:
             ### define Discriminator ###
@@ -94,4 +95,13 @@ class MSITHD(BaseModel):
         params = list(self.gen.parameters())
         self.optimizer_G = torch.optim.Adam(params, lr=self.opt.lr, betas=(self.opt.beta1, 0.999), weight_decay=self.opt.weight_decay)
         print('------------ Now also finetuning global generator -----------')
-        self.get_schedulers()
+        self.schedulers = self.get_schedulers()
+
+    def forward(self):
+        fake_images = []
+        with torch.no_grad():
+            for c in range(self.opt.n_weather_class):
+                fake_image = self.gen(self.label, torch.tensor([c]).long().cuda())
+                fake_images.append(fake_image.cpu())
+        fake_images = torch.cat(fake_images, dim=0)
+        return fake_images

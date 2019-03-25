@@ -118,6 +118,91 @@ class ResNetEnhancer_CBN2(nn.Module):
 
         return output
 
+class ResNetEnhancer_AdaIN(nn.Module):
+    def __init__(self, n_class, input_nc, output_nc, ngf, n_down_global, n_blocks_global,
+                 n_enhancers, n_blocks_local):
+        super(ResNetEnhancer_AdaIN, self).__init__()
+        self.n_class = n_class
+        self.n_enhancers = n_enhancers
+
+        ### global generator model ###
+        ngf_global = ngf * (2**n_enhancers)
+        model_global = ResNetGenerator_AdaIN(n_class, input_nc, output_nc, ngf_global, n_down_global, n_blocks_global)
+        self.model = nn.Sequential(*model_global.model[:-1])
+        self.mlp = model_global.mlp
+
+        ### local enhancer model ###
+        for n in range(1, n_enhancers+1):
+            ngf_global = ngf * (2**(n_enhancers-n))
+            model_down = [Conv2dBlock(input_nc, ngf_global, 7, 1, 3, 'instance', 'relu', 'reflect')]
+            model_down += [Conv2dBlock(ngf_global, 2*ngf_global, 3, 2, 1, 'instance')]
+            model_down = nn.Sequential(*model_down)
+
+            model_up = []
+            for i in range(n_blocks_local):
+                model_up += [ResBlock(2*ngf_global, 'adain', 'relu', 'reflect')]
+            model_up += [upConv2dBlock(2*ngf_global, ngf_global, 3, 1, 1, 'instance')]
+
+            if n == n_enhancers:
+                model_up += [Conv2dBlock(ngf, output_nc, 7, 1, 3, 'none', 'tanh', 'reflect')]
+            model_up = nn.Sequential(*model_up)
+
+            num_adain_params = self.get_num_adain_params(model_up)
+            print('num_adain_params of enhancer{:02d} : {}'.format(n, num_adain_params))
+            mlp = MLP(n_class, num_adain_params, 256, 3, 'none', 'relu')
+
+            setattr(self, 'model'+str(n)+'_down', model_down)
+            setattr(self, 'model'+str(n)+'_up', model_up)
+            setattr(self, 'model'+str(n)+'_mlp', mlp)
+
+        self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
+
+    def forward(self, x, c):
+        x_down = [x]
+        for n in range(self.n_enhancers):
+            x_down.append(self.downsample(x_down[-1]))
+
+        # category to one-hot
+        c_onehot = torch.cuda.FloatTensor(c.size(0), self.n_class).zero_()
+        c = c.unsqueeze(1)
+        c_onehot.scatter_(1, c, 1)
+
+        ### global ###
+        adain_params_global = self.mlp(c_onehot)
+        self.assign_adain_params(adain_params_global, self.model)
+        output = self.model(x_down[-1])
+
+        ### local ###
+        for n in range(1, self.n_enhancers+1):
+            model_down = getattr(self, 'model'+str(n)+'_down')
+            model_up = getattr(self, 'model'+str(n)+'_up')
+            model_mlp = getattr(self, 'model'+str(n)+'_mlp')
+
+            x_n = x_down[self.n_enhancers-n]
+            adain_params_local = model_mlp(c_onehot)
+            self.assign_adain_params(adain_params_local, model_up)
+            output = model_up(model_down(x_n) + output)
+        return output
+
+    def assign_adain_params(self, adain_params, model):
+        # assign the adain_params to the AdaIN layers in model
+        for m in model.modules():
+            if m.__class__.__name__ == "AdaptiveInstanceNorm2d":
+                mean = adain_params[:, :m.num_features]
+                std = adain_params[:, m.num_features:2*m.num_features]
+                m.bias = mean.contiguous().view(-1)
+                m.weight = std.contiguous().view(-1)
+                if adain_params.size(1) > 2*m.num_features:
+                    adain_params = adain_params[:, 2*m.num_features:]
+
+    def get_num_adain_params(self, model):
+        # return the number of AdaIN parameters needed by the model
+        num_adain_params = 0
+        for m in model.modules():
+            if m.__class__.__name__ == "AdaptiveInstanceNorm2d":
+                num_adain_params += 2*m.num_features
+        return num_adain_params
+
 ################################################################################
 # Generator
 ################################################################################

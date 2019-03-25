@@ -85,7 +85,7 @@ class BaseModel():
                     if k in network_dict:
                         network_dict[k] = v
                     else:
-                        not_used.add(k.split('.')[0])
+                        not_used.add(k)
                 print('not used layer in pretrained model: {}'.format(sorted(not_used)))
                 net.load_state_dict(network_dict)
 
