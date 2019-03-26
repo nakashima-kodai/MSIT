@@ -1,5 +1,4 @@
 import torch
-import adabound
 from .base_model import BaseModel
 from . import networks
 
@@ -8,7 +7,8 @@ class MSITHD(BaseModel):
     def initialize(self, opt):
         BaseModel.initialize(self, opt)
 
-        n_class = opt.n_weather_class
+        # n_class = opt.n_weather_class
+        n_class = opt.n_timeofday_class
 
         self.loss_names = ['gen', 'dis', 'adv', 'vgg']
         self.model_names = ['gen']
@@ -49,7 +49,8 @@ class MSITHD(BaseModel):
     def set_variables(self, data):
         self.image = data['image'].cuda()
         self.label = data['label'].cuda()
-        self.category = data['weather'].cuda()
+        # self.category = data['weather'].cuda()
+        self.category = data['timeofday'].cuda()
 
     def update_D(self):
         self.set_requires_grad([self.dis], True)
