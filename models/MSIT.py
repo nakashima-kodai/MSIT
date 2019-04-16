@@ -7,17 +7,17 @@ class MSIT(BaseModel):
     def initialize(self, opt):
         BaseModel.initialize(self, opt)
 
-        # n_class = opt.n_weather_class
-        n_class = opt.n_timeofday_class
+        self.n_class = opt.n_weather_class
+        # self.n_class = opt.n_timeofday_class
 
         # self.loss_names = ['gen', 'dis', 'adv', 'rec']
         self.loss_names = ['gen', 'dis', 'adv', 'vgg']
         self.model_names = ['gen']
-        # self.gen = networks.ResNetGenerator_CBN(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
-        # self.gen = networks.ResNetGenerator_CBN2(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
-        # self.gen = networks.ResNetGenerator_CBN3(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
-        # self.gen = networks.ResNetGenerator_AdaIN(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks)
-        self.gen = networks.cResNetGenerator(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
+        # self.gen = networks.ResNetGenerator_CBN(self.n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
+        # self.gen = networks.ResNetGenerator_CBN2(self.n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
+        # self.gen = networks.ResNetGenerator_CBN3(self.n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
+        # self.gen = networks.ResNetGenerator_AdaIN(self.n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks)
+        self.gen = networks.cResNetGenerator(self.n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
 
         if self.isTrain:
             ### define Discriminator ###
@@ -25,7 +25,7 @@ class MSIT(BaseModel):
             dis_input_nc = opt.output_nc + opt.label_nc
             self.dis = networks.Discriminator(dis_input_nc, opt.ndf, opt.num_D, opt.n_layer)
             # self.dis = networks.DiscriminatorSA(dis_input_nc, opt.ndf, opt.num_D, opt.n_layer)
-            # self.dis = networks.ProjectionDiscriminator(n_class, dis_input_nc, opt.ndf, opt.num_D, opt.n_layer, 'sn', 'lrelu')
+            # self.dis = networks.ProjectionDiscriminator(self.n_class, dis_input_nc, opt.ndf, opt.num_D, opt.n_layer, 'sn', 'lrelu')
 
             ### set optimizers ###
             self.optimizer_names = ['optimizer_G', 'optimizer_D']
@@ -46,9 +46,9 @@ class MSIT(BaseModel):
     def set_variables(self, data):
         self.image = data['image'].cuda()
         self.label = data['label'].cuda()
-        # self.category = data['weather'].cuda()
-        self.category = data['timeofday'].cuda()
-        
+        self.category = data['weather'].cuda()
+        # self.category = data['timeofday'].cuda()
+
     def update_D(self):
         self.set_requires_grad([self.dis], True)
         self.optimizer_D.zero_grad()
@@ -92,7 +92,7 @@ class MSIT(BaseModel):
     def forward(self):
         fake_images = []
         with torch.no_grad():
-            for c in range(self.opt.n_weather_class):
+            for c in range(self.n_class):
                 fake_image = self.gen(self.label, torch.tensor([c]).long().cuda())
                 fake_images.append(fake_image.cpu())
         fake_images = torch.cat(fake_images, dim=0)
