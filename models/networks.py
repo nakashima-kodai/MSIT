@@ -466,6 +466,45 @@ class ResNetGenerator_AdaIN(nn.Module):
                 num_adain_params += 2*m.num_features
         return num_adain_params
 
+
+class cResNetGenerator(nn.Module):
+    def __init__(self, n_class, input_nc, output_nc, ngf, n_down, n_blocks, activation):
+        super(cResNetGenerator, self).__init__()
+        self.n_class = n_class
+
+        model = [Conv2dBlock(input_nc+n_class, ngf, 7, 1, 3, 'instance', 'relu', 'reflect')]
+
+        ### down sampling ###
+        for i in range(n_down):
+            mult = 2**i
+            i_c = mult*ngf
+            o_c = 2*mult*ngf
+            model += [Conv2dBlock(i_c, o_c, 3, 2, 1, 'instance', 'relu')]
+
+        mult = 2**n_down
+        for i in range(n_blocks):
+            model += [ResBlock(mult*ngf, 'instance', 'relu', 'reflect')]
+
+        ### up sampling ###
+        for i in range(n_down):
+            mult = 2**(n_down-i)
+            i_c = mult*ngf
+            o_c = mult*ngf//2
+            model += [upConv2dBlock(i_c, o_c, 3, 1, 1, 'instance', 'relu')]
+
+        model += [Conv2dBlock(ngf, output_nc, 7, 1, 3, 'none', 'tanh', 'reflect')]
+        self.model = nn.Sequential(*model)
+
+    def forward(self, x, c):
+        # category to one-hot
+        c_onehot = torch.cuda.FloatTensor(c.size(0), self.n_class).zero_()
+        c = c.unsqueeze(1)
+        c_onehot.scatter_(1, c, 1)
+        c_onehot = c_onehot.unsqueeze(-1).unsqueeze(-1)
+        c_onehot = c_onehot.repeat(1, 1, x.size(2), x.size(3))
+        x = torch.cat((x, c_onehot), dim=1)
+        return self.model(x)
+
 ################################################################################
 # Discriminator
 ################################################################################

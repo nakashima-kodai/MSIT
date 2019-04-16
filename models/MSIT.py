@@ -16,7 +16,8 @@ class MSIT(BaseModel):
         # self.gen = networks.ResNetGenerator_CBN(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
         # self.gen = networks.ResNetGenerator_CBN2(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
         # self.gen = networks.ResNetGenerator_CBN3(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
-        self.gen = networks.ResNetGenerator_AdaIN(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks)
+        # self.gen = networks.ResNetGenerator_AdaIN(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks)
+        self.gen = networks.cResNetGenerator(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, 'relu')
 
         if self.isTrain:
             ### define Discriminator ###
@@ -47,7 +48,7 @@ class MSIT(BaseModel):
         self.label = data['label'].cuda()
         # self.category = data['weather'].cuda()
         self.category = data['timeofday'].cuda()
-
+        
     def update_D(self):
         self.set_requires_grad([self.dis], True)
         self.optimizer_D.zero_grad()
