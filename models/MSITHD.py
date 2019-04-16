@@ -7,13 +7,14 @@ class MSITHD(BaseModel):
     def initialize(self, opt):
         BaseModel.initialize(self, opt)
 
-        n_class = opt.n_weather_class
-        # n_class = opt.n_timeofday_class
+        # n_class = opt.n_weather_class
+        n_class = opt.n_timeofday_class
 
         self.loss_names = ['gen', 'dis', 'adv', 'vgg']
         self.model_names = ['gen']
         # self.gen = networks.ResNetEnhancer_CBN2(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
-        self.gen = networks.ResNetEnhancer_AdaIN(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
+        # self.gen = networks.ResNetEnhancer_AdaIN(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
+        self.gen = networks.cResNetEnhancer(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
 
         if self.isTrain:
             ### define Discriminator ###
@@ -49,8 +50,8 @@ class MSITHD(BaseModel):
     def set_variables(self, data):
         self.image = data['image'].cuda()
         self.label = data['label'].cuda()
-        self.category = data['weather'].cuda()
-        # self.category = data['timeofday'].cuda()
+        # self.category = data['weather'].cuda()
+        self.category = data['timeofday'].cuda()
 
     def update_D(self):
         self.set_requires_grad([self.dis], True)
@@ -101,7 +102,7 @@ class MSITHD(BaseModel):
     def forward(self):
         fake_images = []
         with torch.no_grad():
-            for c in range(self.opt.n_weather_class):
+            for c in range(self.n_class):
                 fake_image = self.gen(self.label, torch.tensor([c]).long().cuda())
                 fake_images.append(fake_image.cpu())
         fake_images = torch.cat(fake_images, dim=0)

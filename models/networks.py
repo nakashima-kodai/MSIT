@@ -203,6 +203,58 @@ class ResNetEnhancer_AdaIN(nn.Module):
                 num_adain_params += 2*m.num_features
         return num_adain_params
 
+class cResNetEnhancer(nn.Module):
+    def __init__(self, n_class, input_nc, output_nc, ngf, n_down_global, n_blocks_global, n_enhancers, n_blocks_local):
+        super(cResNetEnhancer, self).__init__()
+        self.n_enhancers = n_enhancers
+        self.n_class = n_class
+
+        ### global generator model ###
+        ngf_global = ngf * (2**n_enhancers)
+        model_global = cResNetGenerator(n_class, input_nc, output_nc, ngf_global, n_down_global, n_blocks_global, 'relu').model
+        self.model = nn.Sequential(*model_global[:-1])
+
+        ### local enhancer model ###
+        for n in range(1, n_enhancers+1):
+            ngf_global = ngf * (2**(n_enhancers-n))
+            model_down = [Conv2dBlock(input_nc+n_class, ngf_global, 7, 1, 3, 'instance', 'relu', 'reflect')]
+            model_down += [Conv2dBlock(ngf_global, 2*ngf_global, 3, 2, 1, 'instance')]
+
+            model_up = [ResBlocks(2*ngf_global, n_blocks_local)]
+            model_up += [upConv2dBlock(2*ngf_global, ngf_global, 3, 1, 1, 'instance')]
+
+            if n == n_enhancers:
+                model_up += [Conv2dBlock(ngf, output_nc, 7, 1, 3, 'none', 'tanh', 'reflect')]
+
+            setattr(self, 'model'+str(n)+'_down', nn.Sequential(*model_down))
+            setattr(self, 'model'+str(n)+'_up', nn.Sequential(*model_up))
+
+        self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
+
+    def forward(self, x, c):
+        # category to one-hot
+        c_onehot = torch.cuda.FloatTensor(c.size(0), self.n_class).zero_()
+        c = c.unsqueeze(1)
+        c_onehot.scatter_(1, c, 1)
+        c_onehot = c_onehot.unsqueeze(-1).unsqueeze(-1)
+
+        x_down = [x]
+        c_down = [c_onehot.repeat(1, 1, x.size(2), x.size(3))]
+        for n in range(self.n_enhancers):
+            x_down.append(self.downsample(x_down[-1]))
+            c_down.append(c_onehot.repeat(1, 1, x_down[-1].size(2), x_down[-1].size(3)))
+
+        output = self.model(torch.cat((x_down[-1], c_down[-1]), dim=1))
+        for n in range(1, self.n_enhancers+1):
+            model_down = getattr(self, 'model'+str(n)+'_down')
+            model_up = getattr(self, 'model'+str(n)+'_up')
+
+            x_n = x_down[self.n_enhancers-n]
+            c_n = c_down[self.n_enhancers-n]
+            x_n = torch.cat((x_n, c_n), dim=1)
+            output = model_up(model_down(x_n) + output)
+        return output
+
 ################################################################################
 # Generator
 ################################################################################

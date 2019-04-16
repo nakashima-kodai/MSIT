@@ -57,6 +57,14 @@ class MSIT(BaseModel):
         fake_pair = torch.cat((fake_image.detach(), self.label), dim=1)
         real_pair = torch.cat((self.image, self.label), dim=1)
 
+        # c_onehot = torch.cuda.FloatTensor(c.size(0), self.n_class).zero_()
+        # c = c.unsqueeze(1)
+        # c_onehot.scatter_(1, c, 1)
+        # c_onehot = c_onehot.unsqueeze(-1).unsqueeze(-1)
+        # c_onehot = c_onehot.repeat(1, 1, self.image.size(2), self.image.size(3))
+        # fake_pair = torch.cat((fake_image.detach(), self.label, c_onehot), dim=1)
+        # real_pair = torch.cat((self.image, self.label, c_onehot), dim=1)
+
         # D_fake = self.dis(fake_pair, self.category)
         # D_real = self.dis(real_pair, self.category)
         D_fake = self.dis(fake_pair)
