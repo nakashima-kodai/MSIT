@@ -524,7 +524,8 @@ class cResNetGenerator(nn.Module):
         super(cResNetGenerator, self).__init__()
         self.n_class = n_class
 
-        model = [Conv2dBlock(input_nc+n_class, ngf, 7, 1, 3, 'instance', 'relu', 'reflect')]
+        # model = [Conv2dBlock(input_nc+n_class, ngf, 7, 1, 3, 'instance', 'relu', 'reflect')]
+        model = [Conv2dBlock(input_nc+1, ngf, 7, 1, 3, 'instance', 'relu', 'reflect')]
 
         ### down sampling ###
         for i in range(n_down):
@@ -549,12 +550,18 @@ class cResNetGenerator(nn.Module):
 
     def forward(self, x, c):
         # category to one-hot
-        c_onehot = torch.cuda.FloatTensor(c.size(0), self.n_class).zero_()
-        c = c.unsqueeze(1)
-        c_onehot.scatter_(1, c, 1)
-        c_onehot = c_onehot.unsqueeze(-1).unsqueeze(-1)
-        c_onehot = c_onehot.repeat(1, 1, x.size(2), x.size(3))
-        x = torch.cat((x, c_onehot), dim=1)
+        # c_onehot = torch.cuda.FloatTensor(c.size(0), self.n_class).zero_()
+        # c = c.unsqueeze(1)
+        # c_onehot.scatter_(1, c, 1)
+        # c_onehot = c_onehot.unsqueeze(-1).unsqueeze(-1)
+        # c_onehot = c_onehot.repeat(1, 1, x.size(2), x.size(3))
+
+        # 1ch label
+        c = c.float() / (self.n_class-1)
+        c = c.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+        c = c.repeat(1, 1, x.size(2), x.size(3))
+
+        x = torch.cat((x, c), dim=1)
         return self.model(x)
 
 ################################################################################
