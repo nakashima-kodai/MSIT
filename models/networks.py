@@ -217,7 +217,8 @@ class cResNetEnhancer(nn.Module):
         ### local enhancer model ###
         for n in range(1, n_enhancers+1):
             ngf_global = ngf * (2**(n_enhancers-n))
-            model_down = [Conv2dBlock(input_nc+n_class, ngf_global, 7, 1, 3, 'instance', 'relu', 'reflect')]
+            # model_down = [Conv2dBlock(input_nc+n_class, ngf_global, 7, 1, 3, 'instance', 'relu', 'reflect')]
+            model_down = [Conv2dBlock(input_nc+1, ngf_global, 7, 1, 3, 'instance', 'relu', 'reflect')]
             model_down += [Conv2dBlock(ngf_global, 2*ngf_global, 3, 2, 1, 'instance')]
 
             model_up = [ResBlocks(2*ngf_global, n_blocks_local)]
@@ -233,16 +234,20 @@ class cResNetEnhancer(nn.Module):
 
     def forward(self, x, c):
         # category to one-hot
-        c_onehot = torch.cuda.FloatTensor(c.size(0), self.n_class).zero_()
-        c = c.unsqueeze(1)
-        c_onehot.scatter_(1, c, 1)
-        c_onehot = c_onehot.unsqueeze(-1).unsqueeze(-1)
+        # c_onehot = torch.cuda.FloatTensor(c.size(0), self.n_class).zero_()
+        # c = c.unsqueeze(1)
+        # c_onehot.scatter_(1, c, 1)
+        # c_onehot = c_onehot.unsqueeze(-1).unsqueeze(-1)
+
+        # 1ch label
+        c = c.float() / (self.n_class-1)
+        c = c.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
 
         x_down = [x]
-        c_down = [c_onehot.repeat(1, 1, x.size(2), x.size(3))]
+        c_down = [c.repeat(1, 1, x.size(2), x.size(3))]
         for n in range(self.n_enhancers):
             x_down.append(self.downsample(x_down[-1]))
-            c_down.append(c_onehot.repeat(1, 1, x_down[-1].size(2), x_down[-1].size(3)))
+            c_down.append(c.repeat(1, 1, x_down[-1].size(2), x_down[-1].size(3)))
 
         output = self.model(torch.cat((x_down[-1], c_down[-1]), dim=1))
         for n in range(1, self.n_enhancers+1):
