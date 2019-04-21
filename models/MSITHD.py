@@ -7,21 +7,21 @@ class MSITHD(BaseModel):
     def initialize(self, opt):
         BaseModel.initialize(self, opt)
 
-        n_class = opt.n_weather_class
-        #n_class = opt.n_timeofday_class
+        self.n_class = opt.n_weather_class
+        #self.n_class = opt.n_timeofday_class
 
         self.loss_names = ['gen', 'dis', 'adv', 'vgg']
         self.model_names = ['gen']
-        # self.gen = networks.ResNetEnhancer_CBN2(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
-        # self.gen = networks.ResNetEnhancer_AdaIN(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
-        self.gen = networks.cResNetEnhancer(n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
+        # self.gen = networks.ResNetEnhancer_CBN2(self.n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
+        # self.gen = networks.ResNetEnhancer_AdaIN(self.n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
+        self.gen = networks.cResNetEnhancer(self.n_class, opt.input_nc, opt.output_nc, opt.ngf, opt.n_down, opt.n_blocks, opt.n_enhancers, opt.n_blocks_local)
 
         if self.isTrain:
             ### define Discriminator ###
             self.model_names += ['dis']
             dis_input_nc = opt.output_nc + opt.label_nc
             self.dis = networks.Discriminator(dis_input_nc, opt.ndf, opt.num_D, opt.n_layer)
-            # self.dis = networks.ProjectionDiscriminator(n_class, dis_input_nc, opt.ndf, opt.num_D, opt.n_layer, 'sn', 'lrelu')
+            # self.dis = networks.ProjectionDiscriminator(self.n_class, dis_input_nc, opt.ndf, opt.num_D, opt.n_layer, 'sn', 'lrelu')
 
             ### set optimizers ###
             self.optimizer_names = ['optimizer_G', 'optimizer_D']
